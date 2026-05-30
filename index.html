@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DEAD QUERY — Learn SQL & Survive the Outbreak</title>
+<style>
+  :root {
+    --bg: #0a0d08;
+    --panel: #14180f;
+    --panel-2: #1e2415;
+    --accent: #7fd63f;       /* toxic green */
+    --accent-2: #b6f23b;
+    --blood: #c1342d;
+    --text: #e7ecd9;
+    --muted: #8a967a;
+    --good: #7fd63f;
+    --bad: #e2554b;
+    --border: #2c3420;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background:
+      radial-gradient(900px 500px at 85% -10%, #1c2410 0%, var(--bg) 60%),
+      var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  header {
+    padding: 16px 26px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    background: linear-gradient(180deg, rgba(193,52,45,0.08), transparent);
+  }
+  header h1 {
+    font-size: 22px;
+    margin: 0;
+    letter-spacing: 2px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  header h1 .skull { color: var(--blood); }
+  header h1 .q { color: var(--accent); }
+  .tagline { color: var(--muted); font-size: 13px; }
+  .progress-wrap {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .bar {
+    width: 180px; height: 9px;
+    background: var(--panel-2);
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .bar > div {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--blood), var(--accent));
+    transition: width 0.4s ease;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    min-height: calc(100vh - 60px);
+  }
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 16px;
+    overflow-y: auto;
+  }
+  .sidebar h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1.4px;
+    color: var(--muted); margin: 8px 6px 12px;
+  }
+  .level-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 8px; cursor: pointer;
+    margin-bottom: 4px; border: 1px solid transparent;
+    transition: background 0.15s, border 0.15s;
+  }
+  .level-item:hover { background: var(--panel); }
+  .level-item.active { background: var(--panel); border-color: var(--accent); }
+  .level-item.locked { opacity: 0.4; cursor: not-allowed; }
+  .level-badge {
+    width: 28px; height: 28px; border-radius: 6px;
+    display: grid; place-items: center;
+    font-size: 13px; font-weight: 700;
+    background: var(--panel-2); color: var(--muted); flex-shrink: 0;
+  }
+  .level-item.done .level-badge { background: var(--accent); color: #0c1505; }
+  .level-item.active .level-badge { background: var(--blood); color: #fff; }
+  .level-title { font-size: 13.5px; line-height: 1.3; }
+  .level-sub { font-size: 11px; color: var(--muted); font-family: monospace; }
+  .main { padding: 22px 28px; overflow-y: auto; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px; margin-bottom: 18px;
+  }
+  .lesson-tag {
+    display: inline-block; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--accent); margin-bottom: 6px;
+    font-family: monospace;
+  }
+  .lesson h3 { margin: 2px 0 10px; font-size: 21px; }
+  .lesson p { color: var(--text); line-height: 1.6; margin: 8px 0; }
+  .lesson code, .task code, .hint-box code {
+    background: var(--panel-2); padding: 2px 6px; border-radius: 4px;
+    font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 13px; color: var(--accent-2);
+  }
+  .hint-box {
+    background: var(--panel-2); border-left: 3px solid var(--blood);
+    padding: 10px 14px; border-radius: 6px; margin-top: 12px;
+    font-size: 13.5px; color: var(--muted);
+  }
+  .task {
+    background: rgba(127,214,63,0.07);
+    border: 1px solid rgba(127,214,63,0.3);
+    border-radius: 8px; padding: 14px 16px;
+  }
+  .task b { color: var(--accent); }
+  textarea#editor {
+    width: 100%; min-height: 130px;
+    background: #080a05; color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 14px;
+    font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 14px;
+    line-height: 1.5; resize: vertical; outline: none;
+  }
+  textarea#editor:focus { border-color: var(--accent); }
+  .toolbar { display: flex; gap: 10px; margin-top: 12px; align-items: center; flex-wrap: wrap; }
+  button {
+    font-family: inherit; font-size: 14px; border: none; border-radius: 7px;
+    padding: 10px 18px; cursor: pointer; font-weight: 700;
+    transition: transform 0.08s, filter 0.15s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-run { background: linear-gradient(90deg, var(--accent), var(--accent-2)); color: #0c1505; }
+  .btn-ghost { background: var(--panel-2); color: var(--text); }
+  .btn-ghost:hover { filter: brightness(1.3); }
+  .kbd-hint { font-size: 12px; color: var(--muted); margin-left: auto; }
+  .feedback { margin-top: 14px; padding: 12px 16px; border-radius: 8px; font-size: 14px; display: none; }
+  .feedback.show { display: block; }
+  .feedback.ok { background: rgba(127,214,63,0.12); border: 1px solid var(--good); color: var(--good); }
+  .feedback.err { background: rgba(226,85,75,0.12); border: 1px solid var(--bad); color: var(--bad); }
+  .feedback.info { background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); }
+  .results-wrap { overflow-x: auto; margin-top: 6px; }
+  table.results { border-collapse: collapse; width: 100%; font-size: 13px; }
+  table.results th, table.results td {
+    border: 1px solid var(--border); padding: 8px 12px; text-align: left; white-space: nowrap;
+  }
+  table.results th { background: var(--panel-2); color: var(--accent); position: sticky; top: 0; }
+  table.results tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+  .small-muted { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+  .schema-pill {
+    display: inline-block; background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 10px; margin: 4px 6px 4px 0; font-size: 12px; cursor: help;
+  }
+  .schema-pill b { color: var(--accent); }
+  .loading { display: grid; place-items: center; height: 60vh; color: var(--muted); font-size: 15px; text-align:center; }
+  a { color: var(--accent); }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); max-height: 220px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="skull">☣</span> DEAD <span class="q">QUERY</span></h1>
+  <span class="tagline">The dead rose. The power's flickering. Query the database to keep your camp alive.</span>
+  <div class="progress-wrap">
+    <span id="progressLabel">0 / 0 survived</span>
+    <div class="bar"><div id="progressBar"></div></div>
+  </div>
+</header>
+
+<div class="loading" id="loading">⏳ Booting the camp's old terminal… (needs internet the first time you open this)</div>
+
+<div class="layout" id="layout" style="display:none;">
+  <aside class="sidebar">
+    <h2>Survival Log</h2>
+    <div id="levelList"></div>
+  </aside>
+
+  <main class="main">
+    <div class="card lesson">
+      <span class="lesson-tag" id="lessonTag">Mission</span>
+      <h3 id="lessonTitle"></h3>
+      <div id="lessonBody"></div>
+      <div class="hint-box" id="lessonHint"></div>
+    </div>
+
+    <div class="card">
+      <div class="task" id="taskBox"></div>
+      <div style="margin-top:14px;">
+        <textarea id="editor" spellcheck="false" placeholder="Type your SQL command here…"></textarea>
+      </div>
+      <div class="toolbar">
+        <button class="btn-run" id="runBtn">▶ Run query</button>
+        <button class="btn-ghost" id="solBtn">Show solution</button>
+        <button class="btn-ghost" id="resetBtn">Reset</button>
+        <span class="kbd-hint">Tip: press <code>Ctrl/Cmd + Enter</code> to run</span>
+      </div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;">Terminal output</h2>
+      <div class="results-wrap" id="resultsWrap">
+        <p class="small-muted">Run a query to see results here.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:0 0 10px;">Database files recovered from the bunker</h2>
+      <div id="schemaBox"></div>
+      <p class="small-muted">Hover a table to see its columns. This is the camp's survival database 🧟.</p>
+    </div>
+  </main>
+</div>
+
+<!-- sql.js: real SQLite compiled to WebAssembly, runs fully in your browser -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script>
+//////////////////////  THE CAMP DATABASE  //////////////////////
+const SCHEMA_SQL = `
+CREATE TABLE survivors (
+  id      INTEGER PRIMARY KEY,
+  name    TEXT,
+  role    TEXT,
+  level   INTEGER,
+  ammo    INTEGER,
+  camp    TEXT
+);
+INSERT INTO survivors VALUES
+ (1,'Aria',   'Medic',    12, 340, 'Eastbrook'),
+ (2,'Borin',  'Fighter',   9, 120, 'The Bunker'),
+ (3,'Cyra',   'Scout',    15, 880, 'Eastbrook'),
+ (4,'Dax',    'Fighter',  20,  50, 'The Bunker'),
+ (5,'Elowen', 'Medic',     7, 410, 'Greenfield'),
+ (6,'Finn',   'Sniper',   11, 260, 'Greenfield'),
+ (7,'Greta',  'Engineer', 18, 700, 'Eastbrook'),
+ (8,'Hale',   'Scout',     4,  30, 'The Bunker');
+
+CREATE TABLE weapons (
+  id      INTEGER PRIMARY KEY,
+  name    TEXT,
+  type    TEXT,
+  damage  INTEGER,
+  weight  INTEGER
+);
+INSERT INTO weapons VALUES
+ (1,'Hunting Rifle',    'gun',       12, 4),
+ (2,'Assault Rifle',    'gun',       22, 8),
+ (3,'Crossbow',         'ranged',    18, 5),
+ (4,'Bandage',          'medkit',     0, 1),
+ (5,'Painkillers',      'medkit',     0, 1),
+ (6,'Machete',          'melee',      8, 3),
+ (7,'Chainsaw',         'melee',     30, 9),
+ (8,'Flashbang',        'explosive',  5, 1),
+ (9,'Grenade',          'explosive', 40, 2);
+
+CREATE TABLE raids (
+  id            INTEGER PRIMARY KEY,
+  survivor_id   INTEGER,
+  weapon_id     INTEGER,
+  rounds        INTEGER
+);
+INSERT INTO raids VALUES
+ (1,1,3,1),
+ (2,1,5,3),
+ (3,3,9,1),
+ (4,3,4,5),
+ (5,4,2,1),
+ (6,7,7,1),
+ (7,6,1,1),
+ (8,5,5,2),
+ (9,3,8,1);
+`;
+
+//////////////////////  MISSIONS (LEVELS)  //////////////////////
+const LEVELS = [
+  {
+    title: "Roll call",
+    concept: "SELECT *",
+    lesson: `<p>The outbreak hit fast. First job: pull up <b>everyone</b> in the camp's database so we know who's still standing.</p>
+      <p>SQL is how we ask the database questions. <code>SELECT</code> chooses columns, the star <code>*</code> means <b>all columns</b>, and <code>FROM</code> says which table.</p>
+      <p>So <code>SELECT * FROM survivors;</code> means <i>"give me every column, for every survivor."</i> End every command with a semicolon <code>;</code>.</p>`,
+    hint: "Type exactly: SELECT * FROM survivors;",
+    task: `Pull up <b>all columns and all rows</b> from the <code>survivors</code> table.`,
+    solution: "SELECT * FROM survivors;",
+    starter: "",
+    check: (rows, sql) => /select\s+\*\s+from\s+survivors/i.test(sql)
+  },
+  {
+    title: "Just the names and roles",
+    concept: "SELECT col1, col2",
+    lesson: `<p>The full table is noisy. To assign watch shifts you only need each person's name and what they do.</p>
+      <p>Instead of <code>*</code>, list the column names after <code>SELECT</code>, separated by commas.</p>
+      <p>Example: <code>SELECT name, ammo FROM survivors;</code> shows only those two columns.</p>`,
+    hint: "List the two columns with a comma between them: SELECT name, role FROM survivors;",
+    task: `Show only the <code>name</code> and <code>role</code> of every survivor.`,
+    solution: "SELECT name, role FROM survivors;",
+    starter: "SELECT ",
+    check: (rows) => sameCols(rows, ["name","role"]) && rows.values.length === 8
+  },
+  {
+    title: "Find the fighters",
+    concept: "WHERE condition",
+    lesson: `<p>The east fence is breached and we need muscle. Filter the list down to just the fighters.</p>
+      <p>The <code>WHERE</code> clause keeps only rows that match a condition. It comes after <code>FROM</code>.</p>
+      <p>For text, wrap the value in single quotes: <code>WHERE role = 'Fighter'</code>. For numbers, no quotes: <code>WHERE level = 12</code>.</p>`,
+    hint: "SELECT * FROM survivors WHERE role = 'Fighter';",
+    task: `Show all columns for survivors whose <code>role</code> is exactly <b>Fighter</b>.`,
+    solution: "SELECT * FROM survivors WHERE role = 'Fighter';",
+    starter: "SELECT * FROM survivors\nWHERE ",
+    check: (rows) => onlyRole(rows, "Fighter")
+  },
+  {
+    title: "Veterans only",
+    concept: "> < >= <=",
+    lesson: `<p>A high-risk supply run needs experienced people only. Find the veterans.</p>
+      <p>Compare numbers with <code>&gt;</code> (greater than), <code>&lt;</code> (less than), <code>&gt;=</code>, <code>&lt;=</code>, and <code>=</code>.</p>
+      <p>Example: <code>WHERE level &gt; 10</code> keeps survivors above level 10.</p>`,
+    hint: "Use the >= sign: WHERE level >= 15",
+    task: `Find every survivor at <code>level</code> <b>15 or higher</b>. Show all columns.`,
+    solution: "SELECT * FROM survivors WHERE level >= 15;",
+    starter: "SELECT * FROM survivors\nWHERE ",
+    check: (rows) => {
+      const li = rows.columns.indexOf("level");
+      if (li < 0 || rows.columns.length < 6) return false;
+      return rows.values.length === 3 && rows.values.every(r => r[li] >= 15);
+    }
+  },
+  {
+    title: "Ration the ammo",
+    concept: "ORDER BY ... DESC",
+    lesson: `<p>Ammo is life. To plan rationing, sort survivors by how much they're carrying — most first.</p>
+      <p><code>ORDER BY</code> sorts results. Add <code>DESC</code> for highest-first (descending); leave it off for lowest-first.</p>
+      <p>Example: <code>SELECT * FROM survivors ORDER BY ammo DESC;</code></p>`,
+    hint: "SELECT name, ammo FROM survivors ORDER BY ammo DESC;",
+    task: `Show each survivor's <code>name</code> and <code>ammo</code>, sorted from <b>most ammo to least</b>.`,
+    solution: "SELECT name, ammo FROM survivors ORDER BY ammo DESC;",
+    starter: "SELECT name, ammo FROM survivors\nORDER BY ",
+    check: (rows) => {
+      if (!sameCols(rows, ["name","ammo"])) return false;
+      const ai = rows.columns.indexOf("ammo");
+      const vals = rows.values.map(r => r[ai]);
+      return vals.length === 8 && vals.every((v,i)=> i===0 || vals[i-1] >= v);
+    }
+  },
+  {
+    title: "Well-stocked medics",
+    concept: "AND, OR",
+    lesson: `<p>An infected bite came in. We need a medic who actually has supplies to spare.</p>
+      <p>Combine conditions with <code>AND</code> (both must be true) or <code>OR</code> (either can be true).</p>
+      <p>Example: <code>WHERE role = 'Medic' AND level &gt; 10</code>.</p>`,
+    hint: "SELECT * FROM survivors WHERE role = 'Medic' AND ammo > 350;",
+    task: `Find survivors who are <b>Medics</b> <u>and</u> carry more than <b>350 ammo</b>.`,
+    solution: "SELECT * FROM survivors WHERE role = 'Medic' AND ammo > 350;",
+    starter: "SELECT * FROM survivors\nWHERE ",
+    check: (rows) => {
+      const ri = rows.columns.indexOf("role"), ai = rows.columns.indexOf("ammo");
+      if (ri<0||ai<0||rows.columns.length<6) return false;
+      return rows.values.length === 1 && rows.values.every(r => r[ri]==='Medic' && r[ai] > 350);
+    }
+  },
+  {
+    title: "Inventory the rifles",
+    concept: "LIKE '%...%'",
+    lesson: `<p>Switch to the <code>weapons</code> table. The armory radioed: how many <i>rifles</i> do we have?</p>
+      <p><code>LIKE</code> matches text patterns. The <code>%</code> symbol means "any characters here."</p>
+      <p><code>LIKE 'A%'</code> = starts with A. <code>LIKE '%Rifle%'</code> = contains the word Rifle. <code>LIKE '%n'</code> = ends with n.</p>`,
+    hint: "SELECT * FROM weapons WHERE name LIKE '%Rifle%';",
+    task: `From <code>weapons</code>, find every weapon whose <code>name</code> <b>contains "Rifle"</b>.`,
+    solution: "SELECT * FROM weapons WHERE name LIKE '%Rifle%';",
+    starter: "SELECT * FROM weapons\nWHERE name LIKE ",
+    check: (rows) => {
+      const ni = rows.columns.indexOf("name");
+      if (ni<0||rows.columns.length<5) return false;
+      return rows.values.length === 2 && rows.values.every(r => /rifle/i.test(r[ni]));
+    }
+  },
+  {
+    title: "Load out for close combat",
+    concept: "IN (...)",
+    lesson: `<p>The horde's at the gate — only guns and melee weapons matter now, forget the medkits.</p>
+      <p><code>IN</code> checks if a value is in a list, instead of writing lots of <code>OR</code>s.</p>
+      <p>Example: <code>WHERE camp IN ('Eastbrook','Greenfield')</code>.</p>`,
+    hint: "SELECT name, type FROM weapons WHERE type IN ('gun','melee');",
+    task: `Show the <code>name</code> and <code>type</code> of weapons whose <code>type</code> is either <b>gun</b> or <b>melee</b>.`,
+    solution: "SELECT name, type FROM weapons WHERE type IN ('gun','melee');",
+    starter: "SELECT name, type FROM weapons\nWHERE type IN ",
+    check: (rows) => {
+      if (!sameCols(rows, ["name","type"])) return false;
+      const ti = rows.columns.indexOf("type");
+      return rows.values.length === 4 && rows.values.every(r => ['gun','melee'].includes(r[ti]));
+    }
+  },
+  {
+    title: "Headcount at Eastbrook",
+    concept: "COUNT(*)",
+    lesson: `<p>Eastbrook called for backup. Before sending anyone, how many people are already stationed there?</p>
+      <p>Aggregate functions crunch many rows into one number. <code>COUNT(*)</code> counts rows, and works with <code>WHERE</code>.</p>
+      <p>Example: <code>SELECT COUNT(*) FROM survivors;</code></p>`,
+    hint: "SELECT COUNT(*) FROM survivors WHERE camp = 'Eastbrook';",
+    task: `Count how many survivors are stationed at <b>Eastbrook</b>. (The answer is a single number.)`,
+    solution: "SELECT COUNT(*) FROM survivors WHERE camp = 'Eastbrook';",
+    starter: "SELECT COUNT(*) FROM survivors\nWHERE ",
+    check: (rows) => rows.values.length === 1 && rows.values[0].length === 1 && rows.values[0][0] === 3
+  },
+  {
+    title: "Census of every camp",
+    concept: "GROUP BY",
+    lesson: `<p>HQ wants population numbers for <i>every</i> camp at once, not one at a time.</p>
+      <p><code>GROUP BY</code> buckets rows that share a value so you can count or sum <i>per group</i>.</p>
+      <p>Example: <code>SELECT role, COUNT(*) FROM survivors GROUP BY role;</code> counts survivors per role.</p>`,
+    hint: "SELECT camp, COUNT(*) FROM survivors GROUP BY camp;",
+    task: `For each <code>camp</code>, count how many survivors live there. Show the camp and the count.`,
+    solution: "SELECT camp, COUNT(*) FROM survivors GROUP BY camp;",
+    starter: "SELECT camp, COUNT(*) FROM survivors\nGROUP BY ",
+    check: (rows) => {
+      if (rows.values.length !== 3) return false;
+      const ci = rows.columns.indexOf("camp");
+      const map = {};
+      rows.values.forEach(r => { const c = r.find((v,idx)=>idx!==ci); map[r[ci]] = c; });
+      return map['Eastbrook']===3 && map['The Bunker']===3 && map['Greenfield']===2;
+    }
+  },
+  {
+    title: "Who fired what",
+    concept: "JOIN ... ON",
+    lesson: `<p>The <code>raids</code> table logs every fight, but only as numbers: <code>survivor_id</code> and <code>weapon_id</code>. Useless without names.</p>
+      <p><code>JOIN</code> stitches tables together on a matching column using <code>ON</code>:</p>
+      <p><code>SELECT survivors.name, weapons.name FROM raids JOIN survivors ON raids.survivor_id = survivors.id JOIN weapons ON raids.weapon_id = weapons.id;</code></p>`,
+    hint: "Join raids to survivors (on survivor_id = survivors.id) and to weapons (on weapon_id = weapons.id).",
+    task: `List each raid as a pair: the <b>survivor's name</b> and the <b>weapon's name</b> they used. (Two columns.)`,
+    solution: "SELECT survivors.name, weapons.name\nFROM raids\nJOIN survivors ON raids.survivor_id = survivors.id\nJOIN weapons   ON raids.weapon_id   = weapons.id;",
+    starter: "SELECT survivors.name, weapons.name\nFROM raids\nJOIN survivors ON \nJOIN weapons   ON ",
+    check: (rows) => rows.values.length === 9 && rows.columns.length === 2
+  },
+  {
+    title: "BOSS: top zombie slayer",
+    concept: "JOIN + SUM + GROUP BY + ORDER BY",
+    lesson: `<p>Final stand. Command wants to know who's clearing the most undead so they get first pick of supplies.</p>
+      <p>When you <code>JOIN</code> raids with weapons, each row knows the weapon's <code>damage</code> and the <code>rounds</code> fired. Zombies cleared on a row = <code>damage * rounds</code>.</p>
+      <p>Use <code>SUM(...)</code> with <code>GROUP BY</code> to total per survivor, then <code>ORDER BY</code> to rank them. You can name a computed column with <code>AS</code>.</p>`,
+    hint: "SELECT survivors.name, SUM(weapons.damage * raids.rounds) AS zombies FROM raids JOIN survivors ON raids.survivor_id=survivors.id JOIN weapons ON raids.weapon_id=weapons.id GROUP BY survivors.name ORDER BY zombies DESC;",
+    task: `Show each survivor's <code>name</code> and <b>total zombies cleared</b> (damage × rounds, summed), ranked from <b>most kills to fewest</b>.`,
+    solution: "SELECT survivors.name, SUM(weapons.damage * raids.rounds) AS zombies\nFROM raids\nJOIN survivors ON raids.survivor_id = survivors.id\nJOIN weapons   ON raids.weapon_id   = weapons.id\nGROUP BY survivors.name\nORDER BY zombies DESC;",
+    starter: "SELECT survivors.name, SUM(weapons.damage * raids.rounds) AS zombies\nFROM raids\nJOIN survivors ON \nJOIN weapons   ON \nGROUP BY \nORDER BY ",
+    check: (rows) => {
+      if (rows.columns.length !== 2 || rows.values.length < 1) return false;
+      const vals = rows.values.map(r => r[1]);
+      const descending = vals.every((v,i)=> i===0 || vals[i-1] >= v);
+      return descending && vals[0] === 45;  // Cyra: 40 + 0 + 5
+    }
+  }
+];
+
+//////////////////////  HELPERS  //////////////////////
+function sameCols(rows, expected) {
+  if (!rows || !rows.columns) return false;
+  if (rows.columns.length !== expected.length) return false;
+  return expected.every((c,i) => rows.columns[i].toLowerCase() === c.toLowerCase());
+}
+function onlyRole(rows, role) {
+  const ri = rows.columns.indexOf("role");
+  if (ri < 0 || rows.columns.length < 6) return false;
+  return rows.values.length > 0 && rows.values.every(r => r[ri] === role);
+}
+
+//////////////////////  STATE  //////////////////////
+let db = null;
+let current = 0;
+let solved = JSON.parse(localStorage.getItem("deadquery_solved") || "[]");
+
+function saveProgress() { localStorage.setItem("deadquery_solved", JSON.stringify(solved)); }
+function isUnlocked(i) { return i === 0 || solved.includes(i - 1); }
+
+//////////////////////  RENDER  //////////////////////
+function renderLevelList() {
+  const list = document.getElementById("levelList");
+  list.innerHTML = "";
+  LEVELS.forEach((lv, i) => {
+    const done = solved.includes(i);
+    const unlocked = isUnlocked(i);
+    const div = document.createElement("div");
+    div.className = "level-item" + (i===current?" active":"") + (done?" done":"") + (!unlocked?" locked":"");
+    div.innerHTML = `
+      <div class="level-badge">${done ? "✓" : (unlocked ? (i+1) : "🔒")}</div>
+      <div>
+        <div class="level-title">${lv.title}</div>
+        <div class="level-sub">${lv.concept}</div>
+      </div>`;
+    if (unlocked) div.onclick = () => loadLevel(i);
+    list.appendChild(div);
+  });
+  const count = solved.length;
+  document.getElementById("progressLabel").textContent = `${count} / ${LEVELS.length} survived`;
+  document.getElementById("progressBar").style.width = (count / LEVELS.length * 100) + "%";
+}
+
+function renderSchema() {
+  const box = document.getElementById("schemaBox");
+  const tables = {
+    survivors: "id, name, role, level, ammo, camp",
+    weapons: "id, name, type, damage, weight",
+    raids: "id, survivor_id, weapon_id, rounds"
+  };
+  box.innerHTML = Object.entries(tables).map(([t, cols]) =>
+    `<span class="schema-pill" title="columns: ${cols}"><b>${t}</b> &nbsp;(${cols})</span>`
+  ).join("");
+}
+
+function loadLevel(i) {
+  current = i;
+  const lv = LEVELS[i];
+  document.getElementById("lessonTag").textContent = `Mission ${i+1} — ${lv.concept}`;
+  document.getElementById("lessonTitle").textContent = lv.title;
+  document.getElementById("lessonBody").innerHTML = lv.lesson;
+  document.getElementById("lessonHint").innerHTML = "💡 <b>Hint:</b> " + lv.hint;
+  document.getElementById("taskBox").innerHTML = "🎯 <b>Your task:</b> " + lv.task;
+  document.getElementById("editor").value = lv.starter || "";
+  hideFeedback();
+  document.getElementById("resultsWrap").innerHTML = '<p class="small-muted">Run a query to see results here.</p>';
+  renderLevelList();
+  document.getElementById("editor").focus();
+}
+
+function showFeedback(type, msg) {
+  const fb = document.getElementById("feedback");
+  fb.className = "feedback show " + type;
+  fb.innerHTML = msg;
+}
+function hideFeedback() { document.getElementById("feedback").className = "feedback"; }
+
+function renderTable(res) {
+  const wrap = document.getElementById("resultsWrap");
+  if (!res || res.values.length === 0) {
+    wrap.innerHTML = '<p class="small-muted">Query ran fine, but returned 0 rows.</p>';
+    return;
+  }
+  let html = '<table class="results"><thead><tr>';
+  res.columns.forEach(c => html += `<th>${c}</th>`);
+  html += '</tr></thead><tbody>';
+  res.values.forEach(row => {
+    html += '<tr>';
+    row.forEach(cell => html += `<td>${cell === null ? '<i style="color:var(--muted)">null</i>' : cell}</td>`);
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  html += `<p class="small-muted">${res.values.length} row(s) returned.</p>`;
+  wrap.innerHTML = html;
+}
+
+//////////////////////  RUN  //////////////////////
+function runQuery() {
+  const sql = document.getElementById("editor").value.trim();
+  if (!sql) { showFeedback("info", "Type a query first, survivor."); return; }
+  let res;
+  try {
+    const out = db.exec(sql);
+    res = out.length ? out[0] : { columns: [], values: [] };
+  } catch (e) {
+    showFeedback("err", "⚠️ SQL error: " + e.message + "<br><span style='opacity:.85'>Check spelling, quotes, and the semicolon at the end.</span>");
+    document.getElementById("resultsWrap").innerHTML = '<p class="small-muted">No results — fix the error above.</p>';
+    return;
+  }
+  renderTable(res);
+
+  const lv = LEVELS[current];
+  let passed = false;
+  try { passed = lv.check(res, sql); } catch(e) { passed = false; }
+
+  if (passed) {
+    if (!solved.includes(current)) { solved.push(current); saveProgress(); }
+    const isLast = current === LEVELS.length - 1;
+    if (isLast) {
+      showFeedback("ok", "🏆 <b>The camp survives — and so do you.</b> You just learned SELECT, WHERE, ORDER BY, AND/OR, LIKE, IN, COUNT, GROUP BY, JOIN and SUM. That's real, working SQL. Well done. 🧟‍♂️💀");
+    } else {
+      showFeedback("ok", "✅ <b>Mission complete!</b> Next mission unlocked. " +
+        `<button class='btn-ghost' style='margin-left:8px;padding:5px 12px;font-size:13px' onclick='loadLevel(${current+1})'>Next mission →</button>`);
+    }
+    renderLevelList();
+  } else {
+    showFeedback("err", "Not quite — the output doesn't match the mission yet. Re-read the task, check the hint, and look at the table above. Try again.");
+  }
+}
+
+//////////////////////  INIT  //////////////////////
+initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}` })
+  .then(SQL => {
+    db = new SQL.Database();
+    db.run(SCHEMA_SQL);
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("layout").style.display = "grid";
+    renderSchema();
+    let start = 0;
+    for (let i = 0; i < LEVELS.length; i++) { if (!solved.includes(i)) { start = i; break; } start = i; }
+    loadLevel(isUnlocked(start) ? start : 0);
+
+    document.getElementById("runBtn").onclick = runQuery;
+    document.getElementById("resetBtn").onclick = () => loadLevel(current);
+    document.getElementById("solBtn").onclick = () => {
+      document.getElementById("editor").value = LEVELS[current].solution;
+      showFeedback("info", "Here's one correct solution. Read it, then press Run to see it work.");
+    };
+    document.getElementById("editor").addEventListener("keydown", e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runQuery(); }
+    });
+  })
+  .catch(err => {
+    document.getElementById("loading").innerHTML =
+      "❌ Couldn't boot the SQL engine. You need an internet connection the first time you open this page.<br><small>" + err + "</small>";
+  });
+</script>
+</body>
+</html>
