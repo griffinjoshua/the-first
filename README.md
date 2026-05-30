@@ -16,7 +16,9 @@ No setup. No installs. Just open the page and play.
 
 **Option B — live link (no download)**
 
-👉 **https://htmlpreview.github.io/?https://github.com/griffinjoshua/the-first/blob/claude/sql-learning-game-Zalb6/index.html**
+👉 **https://griffinjoshua.github.io/the-first/**
+
+This is published automatically with GitHub Pages every time `main` updates.
 
 ## 🧟 How it works
 
