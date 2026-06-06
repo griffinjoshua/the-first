@@ -229,8 +229,8 @@
   </main>
 </div>
 
-<!-- sql.js: real SQLite compiled to WebAssembly, runs fully in your browser -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<!-- sql.js (real SQLite via WebAssembly) is loaded dynamically below, after the
+     page is ready, so it works even in viewers that reorder/strip script tags. -->
 <script>
 //////////////////////  THE CAMP DATABASE  //////////////////////
 const SCHEMA_SQL = `
@@ -598,32 +598,84 @@ function runQuery() {
   }
 }
 
-//////////////////////  INIT  //////////////////////
-initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}` })
-  .then(SQL => {
-    db = new SQL.Database();
-    db.run(SCHEMA_SQL);
-    document.getElementById("loading").style.display = "none";
-    document.getElementById("layout").style.display = "grid";
-    renderSchema();
-    let start = 0;
-    for (let i = 0; i < LEVELS.length; i++) { if (!solved.includes(i)) { start = i; break; } start = i; }
-    loadLevel(isUnlocked(start) ? start : 0);
+//////////////////////  INIT (robust multi-CDN loader)  //////////////////////
+// We load sql.js dynamically and only start AFTER the engine script is ready.
+// This works even in viewers (like htmlpreview) that break <script> load order,
+// and falls back across multiple CDNs if one is blocked or slow.
+const SQLJS_CDNS = [
+  "https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/",
+  "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/",
+  "https://unpkg.com/sql.js@1.10.3/dist/"
+];
 
-    document.getElementById("runBtn").onclick = runQuery;
-    document.getElementById("resetBtn").onclick = () => loadLevel(current);
-    document.getElementById("solBtn").onclick = () => {
-      document.getElementById("editor").value = LEVELS[current].solution;
-      showFeedback("info", "Here's one correct solution. Read it, then press Run to see it work.");
-    };
-    document.getElementById("editor").addEventListener("keydown", e => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runQuery(); }
-    });
-  })
-  .catch(err => {
-    document.getElementById("loading").innerHTML =
-      "❌ Couldn't boot the SQL engine. You need an internet connection the first time you open this page.<br><small>" + err + "</small>";
+let booted = false;
+function setLoadingMsg(html) {
+  const el = document.getElementById("loading");
+  if (el) el.innerHTML = html;
+}
+
+function boot(SQL) {
+  if (booted) return;
+  booted = true;
+  db = new SQL.Database();
+  db.run(SCHEMA_SQL);
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("layout").style.display = "grid";
+  renderSchema();
+  let start = 0;
+  for (let i = 0; i < LEVELS.length; i++) { if (!solved.includes(i)) { start = i; break; } start = i; }
+  loadLevel(isUnlocked(start) ? start : 0);
+
+  document.getElementById("runBtn").onclick = runQuery;
+  document.getElementById("resetBtn").onclick = () => loadLevel(current);
+  document.getElementById("solBtn").onclick = () => {
+    document.getElementById("editor").value = LEVELS[current].solution;
+    showFeedback("info", "Here's one correct solution. Read it, then press Run to see it work.");
+  };
+  document.getElementById("editor").addEventListener("keydown", e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runQuery(); }
   });
+}
+
+function startWithBase(base) {
+  if (typeof initSqlJs === "undefined") { tryNextCdn("engine script loaded but initSqlJs missing"); return; }
+  initSqlJs({ locateFile: f => base + f })
+    .then(boot)
+    .catch(err => tryNextCdn("WASM init failed (" + err + ")"));
+}
+
+let cdnIndex = 0;
+function tryNextCdn(prevErr) {
+  if (booted) return;
+  if (cdnIndex >= SQLJS_CDNS.length) {
+    setLoadingMsg("❌ Couldn't load the SQL engine from any source.<br>" +
+      "Your network may be blocking it. Try a different network/Wi-Fi, reload the page, " +
+      "or download <code>index.html</code> from GitHub and open it directly.<br>" +
+      "<small style='opacity:.7'>" + (prevErr || "") + "</small>");
+    return;
+  }
+  const base = SQLJS_CDNS[cdnIndex++];
+  setLoadingMsg("⏳ Booting the camp's old terminal… (source " + cdnIndex + " of " + SQLJS_CDNS.length + ")");
+  // If a previous attempt already defined initSqlJs, just retry init with the new base.
+  if (typeof initSqlJs !== "undefined") { startWithBase(base); return; }
+  const s = document.createElement("script");
+  s.src = base + "sql-wasm.js";
+  s.onload = () => startWithBase(base);
+  s.onerror = () => tryNextCdn("engine script failed to load from " + base);
+  document.head.appendChild(s);
+}
+
+// Watchdog: if nothing has booted after 22s, show an actionable message.
+setTimeout(function () {
+  if (!booted) {
+    setLoadingMsg("⏳ Still booting… If this doesn't clear in a few seconds, your connection is slow " +
+      "or your network is blocking the engine.<br>Try: <b>reload the page</b>, switch Wi-Fi/network, " +
+      "or download <code>index.html</code> and open it directly.");
+  }
+}, 22000);
+
+tryNextCdn();
 </script>
 </body>
 </html>
+
