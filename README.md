@@ -9,16 +9,27 @@ No setup. No installs. Just open the page and play.
 
 ## ▶ How to play
 
-**Option A — open the file**
+**Option A — instant play link (works right now, nothing to set up)**
+
+👉 **https://htmlpreview.github.io/?https://github.com/griffinjoshua/the-first/blob/main/index.html**
+
+Click it and play. (First load takes a few seconds while the SQL engine boots.)
+
+**Option B — open the file locally**
 1. Download / clone this repo.
 2. Double-click `index.html` (it opens in your browser).
 3. You need an internet connection the **first time** (it downloads the SQL engine).
 
-**Option B — live link (no download)**
+**Option C — your own clean URL via GitHub Pages (one-time setup)**
 
-👉 **https://griffinjoshua.github.io/the-first/**
+1. Open **https://github.com/griffinjoshua/the-first/settings/pages**
+2. Under **Build and deployment → Source**, pick **Deploy from a branch**.
+3. Set **Branch: `main`**, folder **`/ (root)`**, then **Save**.
+4. Wait ~1 minute, then visit **https://griffinjoshua.github.io/the-first/**
 
-This is published automatically with GitHub Pages every time `main` updates.
+> Why the one click? GitHub does not let an automated workflow turn Pages on by
+> itself (the token is blocked from creating the site for security). Once you flip
+> this toggle, every push to `main` republishes automatically — no workflow needed.
 
 ## 🧟 How it works
 
